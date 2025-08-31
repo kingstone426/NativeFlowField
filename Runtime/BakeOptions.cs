@@ -3,6 +3,12 @@ using UnityEngine.Rendering;
 
 namespace FlowFieldAI
 {
+    public enum BakeMode
+    {
+        Approach,
+        Flee,
+    }
+
     /// <summary>
     /// Configuration options for baking a flow field.
     ///
@@ -34,6 +40,10 @@ namespace FlowFieldAI
         /// </summary>
         public ComputeQueueType ComputeQueueType;
 
+        public BakeMode Mode;
+
+        public float FleeFactor;
+
         /// <summary>
         /// Returns true if the bake will be performed incrementally across multiple frames.
         /// </summary>
@@ -49,6 +59,8 @@ namespace FlowFieldAI
             IterationsPerFrame = 0,
             DiagonalMovement = false,
             ComputeQueueType = ComputeQueueType.Background,
+            Mode = BakeMode.Approach,
+            FleeFactor = -1.2f,
         };
     }
 }

@@ -99,6 +99,8 @@ namespace FlowFieldAI
             public static readonly int Width = Shader.PropertyToID("Width");
             public static readonly int Height = Shader.PropertyToID("Height");
             public static readonly int DiagonalMovement = Shader.PropertyToID("DiagonalMovement");
+            public static readonly int IgnoreFree = Shader.PropertyToID("IgnoreFree");
+            public static readonly int Multiplier = Shader.PropertyToID("Multiplier");
             public static readonly int InputCosts = Shader.PropertyToID("InputCosts");
             public static readonly int OutputCosts = Shader.PropertyToID("OutputCosts");
             public static readonly int OutputHeatMap = Shader.PropertyToID("OutputHeatMap");
@@ -328,6 +330,11 @@ namespace FlowFieldAI
                 // Assign compute buffers
                 commandBuffer.SetComputeBufferParam(integrationComputeShader, integrationComputeShaderKernel, ShaderProperties.InputCosts, integrationFrontBuffer);
                 commandBuffer.SetComputeBufferParam(integrationComputeShader, integrationComputeShaderKernel, ShaderProperties.OutputCosts, integrationBackBuffer);
+
+                var isFleePass = bakeContext.Options.Mode == BakeMode.Flee && bakeContext.CurrentIteration == bakeContext.Options.Iterations / 2;
+                commandBuffer.SetComputeFloatParam(integrationComputeShader, ShaderProperties.Multiplier, isFleePass ? bakeContext.Options.FleeFactor : 1);
+                var ignoreFree = bakeContext.Options.Mode == BakeMode.Flee && bakeContext.CurrentIteration >= bakeContext.Options.Iterations / 2;
+                commandBuffer.SetComputeIntParam(integrationComputeShader, ShaderProperties.IgnoreFree, ignoreFree ? 1 : 0);
 
                 // Dispatch compute shader
                 var threadGroupsX = Mathf.CeilToInt(Width / 8f);

@@ -5,16 +5,34 @@
 uint Width;
 uint Height;
 int DiagonalMovement;
+int IgnoreFree;
+float Multiplier;
 StructuredBuffer<float> InputCosts;
 RWStructuredBuffer<float> OutputCosts;
 
+float getMultipliedInputCost(int index)
+{
+    float value = InputCosts[index];
+    if (value >= FLT_MAX-1) return value;
+    if (value <= FLT_MIN) return value;
+    return value * Multiplier;
+}
+
 float getMinCost(uint x, uint y)
 {
-    float minCost = InputCosts[flatten(x, y, Width)];
+    float minCost = getMultipliedInputCost(flatten(x, y, Width));
 
     if (minCost >= FLT_MAX) // Obstacle
     {
         return minCost;
+    }
+
+    if (IgnoreFree) // Flee Mode Second Pass
+    {
+        if (minCost <= FLT_MIN) // Free
+        {
+            return minCost;
+        }
     }
 
     [unroll]
@@ -29,11 +47,11 @@ float getMinCost(uint x, uint y)
             if (isDiagonal)
             {
                 // Both orthogonal must be free
-                if (InputCosts[flatten(x + offsets[i].x, y, Width)] >= FLT_MAX-1) continue;
-                if (InputCosts[flatten(x, y + offsets[i].y, Width)] >= FLT_MAX-1) continue;
+                if (getMultipliedInputCost(flatten(x + offsets[i].x, y, Width)) >= FLT_MAX-1) continue;
+                if (getMultipliedInputCost(flatten(x, y + offsets[i].y, Width)) >= FLT_MAX-1) continue;
             }
             uint neighborIndex = flatten(nx, ny, Width);
-            float neighborCost = InputCosts[neighborIndex];
+            float neighborCost = getMultipliedInputCost(neighborIndex);
 
             if (neighborCost < FLT_MAX && neighborCost > FLT_MIN)
             {
