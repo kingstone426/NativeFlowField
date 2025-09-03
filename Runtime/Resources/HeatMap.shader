@@ -8,6 +8,8 @@
         Alpha ("Alpha", Float) = 1
         FlowSpeed ("Flow Speed", Float) = 0
         FlowCycle ("Flow Cycle", Float) = 1
+        BorderPercentage ("Border Percentage", Float) = 0
+        [Enum(Point,0, Bilinear,1)] Sampling ("Sampling", Float) = 1
         [Enum(Inferno,0, Magma,1, Plasma,2, Viridis,3)] Gradient ("Gradient", Float) = 0
         FreeColor ("Free Color", Color) = (0, 0, 0, 0)
         ObstacleColor ("Obstacle Color", Color) = (.1, .1, .1, 1)
@@ -56,14 +58,16 @@
             float Alpha;
             float FlowSpeed;
             float FlowCycle;
+            float BorderPercentage;
             float Gradient;
+            float Sampling;
             float4 FreeColor;
             float4 ObstacleColor;
 
             bool IsValid(float v, float2 coord)
             {
-                float min = -100;
-                float max = 100;
+                float min = FLT_MIN;
+                float max = FLT_MAX;
 
                 if (v <= min)
                     return false;
@@ -125,17 +129,28 @@
                 return result / sum;
             }
 
+            bool IsBorder(v2f i)
+            {
+                float2 st_grid = i.uv * _MainTex_TexelSize.zw;
+                float2 f_grid  = 100 * frac(st_grid);
+                return f_grid.x < BorderPercentage ||
+                    f_grid.y < BorderPercentage ||
+                    f_grid.x > 100-BorderPercentage ||
+                    f_grid.y > 100-BorderPercentage;
+            }
+
+            float GetSample(v2f i)
+            {
+                if (Sampling == 0) return UNITY_SAMPLE_TEX2D( _MainTex, i.uv );
+
+                return SampleBilinear(i);
+            }
+
             fixed4 frag(v2f i) : SV_Target
             {
-                // TODO: grid size parameter
-                float2 st_grid = i.uv * _MainTex_TexelSize.zw;
-                float2 f_grid  = frac(st_grid);
-                float edge = 0.01;
-                if (f_grid.x < edge || f_grid.y < edge || f_grid.x > 1-edge || f_grid.y > 1-edge) return FLT_MAX;
+                if (IsBorder(i)) return ObstacleColor; // Tile border
 
-                // TODO: Option for point sampling vs bilinear
-                //float value = UNITY_SAMPLE_TEX2D( _MainTex, i.uv );
-                float value = SampleBilinear(i);
+                float value = GetSample(i); // Sample texture
 
                 if (value == 0) return float4(gradient(Gradient, 1), Alpha);  // Target
                 if (value <= FLT_MIN) return FreeColor; // Free
